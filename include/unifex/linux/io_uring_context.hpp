@@ -52,6 +52,9 @@
 #  include <sys/socket.h>
 #  include <sys/uio.h>
 #  include <unistd.h>
+#  if __has_include(<bit>)
+#  include <bit>
+#  endif // __has_include(<bit>)
 
 #  include <unifex/detail/prologue.hpp>
 
@@ -1352,11 +1355,15 @@ private:
   safe_file_descriptor fd_;
 
   static constexpr std::uint16_t host_to_network(std::uint16_t value) {
-      if constexpr (std::endian::native == std::endian::little) {
-          return std::byteswap(value);
-      } else {
-          return value;
-      }
+#   if __has_include(<bit>)
+      return (
+        std::endian::native == std::endian::little
+          ? std::byteswap(value)
+          : value
+      );
+#   else
+      return htons(value);
+#   endif
   }
 
   // TODO should this run on the io_context? If so, why?
@@ -1387,4 +1394,4 @@ private:
 
 #  include <unifex/detail/epilogue.hpp>
 
-#endif  // __has_include(<liburing.h>)
+#endif // UNIFEX_NO_LIBURING
