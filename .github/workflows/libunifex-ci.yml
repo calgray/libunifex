@@ -569,16 +569,6 @@ jobs:
         sudo apt update
         sudo apt install g++-14 gcc-14
 
-    - name: Install GCC 15
-      id: install_gcc_15
-      if: startsWith(matrix.config.os, 'ubuntu') && ( matrix.config.cxx == 'g++-15' )
-      shell: bash
-      working-directory: ${{ env.HOME }}
-      run: |
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa -y
-        sudo apt update
-        sudo apt install -y g++-15 gcc-15
-
     - name: Install liburing
       id: install_liburing
       if: startsWith(matrix.config.os, 'ubuntu') && ( matrix.config.io_sys == 'io_uring' )
@@ -627,7 +617,7 @@ jobs:
           RESULT_VARIABLE result
         )
         if (NOT result EQUAL 0)
-          message(WARNING "Bad exit status: ${result}")
+          message(FATAL_ERROR "Bad exit status")
         endif()
 
     - name: Build
@@ -655,7 +645,7 @@ jobs:
           RESULT_VARIABLE result
         )
         if (NOT result EQUAL 0)
-          message(FATAL_ERROR "Bad exit status: ${result}")
+          message(FATAL_ERROR "Bad exit status")
         endif()
 
     - name: Run tests
@@ -703,5 +693,5 @@ jobs:
           RESULT_VARIABLE result
         )
         if (NOT result EQUAL 0)
-          message(FATAL_ERROR "Bad exit status: ${result}")
+          message(FATAL_ERROR "Bad exit status")
         endif()
