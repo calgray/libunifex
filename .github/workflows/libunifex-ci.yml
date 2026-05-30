@@ -3,17 +3,17 @@ name: libunifex CI
 # Trigger on pushes to all branches and for all pull-requests
 on: [push, pull_request]
 
-env:
-  CMAKE_VERSION: 3.16.2
-  NINJA_VERSION: 1.9.0
-
-
 jobs:
   build:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
+    env:
+      CMAKE_VERSION: ${{ matrix.config.cmake_version || '3.16.2' }}
+      NINJA_VERSION: ${{ matrix.config.ninja_version || '1.9.0' }}
     container:
       image: ${{ matrix.config.container_image || '' }}
+      env:
+        DEBIAN_FRONTEND: "noninteractive"
     strategy:
       fail-fast: false
       matrix:
@@ -155,27 +155,30 @@ jobs:
         #     cmake_args: "-D CMAKE_CXX_STANDARD:STRING=20 -D CMAKE_CXX_FLAGS=-fno-exceptions"
         #   }
         - {
-            name: "Linux GCC 15 Debug (C++23)", artifact: "Linux.tar.xz",
-            os: ubuntu-latest, container_image: "ubuntu:26.04",
+            name: "Linux GCC 14 Debug (C++23)", artifact: "Linux.tar.xz",
+            os: ubuntu-latest,
             io_sys: io_uring,
             build_type: Debug,
-            cc: "gcc-15", cxx: "g++-15",
+            cc: "gcc-14", cxx: "g++-14",
+            cmake_version: "3.20.0",
+            cmake_args: "-D CMAKE_CXX_STANDARD:STRING=20"
+          }
+        - {
+            name: "Linux GCC 14 Optimised (C++23)", artifact: "Linux.tar.xz",
+            os: ubuntu-latest, # container_image: "ubuntu:26.04",
+            io_sys: io_uring,
+            build_type: RelWithDebInfo,
+            cc: "gcc-14", cxx: "g++-14",
+            cmake_version: "3.20.0",
             cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23"
           }
         - {
-            name: "Linux GCC 15 Optimised (C++23)", artifact: "Linux.tar.xz",
-            os: ubuntu-latest, container_image: "ubuntu:26.04",
+            name: "Linux GCC 14 Optimised noexcept (C++23)", artifact: "Linux.tar.xz",
+            os: ubuntu-latest, # container_image: "ubuntu:26.04",
             io_sys: io_uring,
             build_type: RelWithDebInfo,
-            cc: "gcc-15", cxx: "g++-15",
-            cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23"
-          }
-        - {
-            name: "Linux GCC 15 Optimised noexcept (C++23)", artifact: "Linux.tar.xz",
-            os: ubuntu-latest, container_image: "ubuntu:26.04",
-            io_sys: io_uring,
-            build_type: RelWithDebInfo,
-            cc: "gcc-15", cxx: "g++-15",
+            cc: "gcc-14", cxx: "g++-14",
+            cmake_version: "3.20.0",
             cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D CMAKE_CXX_FLAGS=-fno-exceptions"
           }
         # - {
@@ -324,26 +327,29 @@ jobs:
         #   }
         - {
             name: "Linux Clang 22 Debug (C++23)", artifact: "Linux.tar.xz",
-            os: ubuntu-latest, container_image: "ubuntu:26.04",
+            os: ubuntu-latest, # container_image: "ubuntu:26.04",
             io_sys: io_uring,
             build_type: Debug,
             cc: "clang-22", cxx: "clang++-22",
-            cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\""
+            cmake_version: "3.20.0",
+            cmake_args: "-D CMAKE_CXX_STANDARD:STRING=20 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\""
           }
         - {
             name: "Linux Clang 22 Optimised (C++23)", artifact: "Linux.tar.xz",
-            os: ubuntu-latest, container_image: "ubuntu:26.04",
+            os: ubuntu-latest, # container_image: "ubuntu:26.04",
             io_sys: io_uring,
             build_type: RelWithDebInfo,
             cc: "clang-22", cxx: "clang++-22",
+            cmake_version: "3.20.0",
             cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\""
           }
         - {
             name: "Linux Clang 22 Optimised noexcept (C++23)", artifact: "Linux.tar.xz",
-            os: ubuntu-latest, container_image: "ubuntu:26.04",
+            os: ubuntu-latest, # container_image: "ubuntu:26.04",
             io_sys: io_uring,
             build_type: RelWithDebInfo,
             cc: "clang-22", cxx: "clang++-22",
+            cmake_version: "3.20.0",
             cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\" -D CMAKE_CXX_FLAGS=-fno-exceptions"
           }
         # - {
@@ -448,10 +454,11 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - name: Bootstrap CMake
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '3.16.x'
+    - name: Install OCI Ubuntu Tools
+      if: startsWith(matrix.config.container_image, 'ubuntu')
+      run: |
+        apt update
+        apt install -y software-properties-common lsb-release sudo cmake wget curl g++ gcc
 
     - name: Download Ninja and CMake
       id: cmake_and_ninja
@@ -613,7 +620,7 @@ jobs:
       run: |
         sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa -y
         sudo apt update
-        sudo apt install g++-15 gcc-15
+        sudo apt install -y g++-15 gcc-15
 
     - name: Install liburing
       id: install_liburing
@@ -626,7 +633,7 @@ jobs:
         sudo make install
 
     - name: Configure
-      shell: cmake -P {0}
+      shell: cmake -P {0} --trace
       run: |
         set(ENV{CC} ${{ matrix.config.cc }})
         set(ENV{CXX} ${{ matrix.config.cxx }})
@@ -661,8 +668,15 @@ jobs:
             -D CMAKE_VERBOSE_MAKEFILE=ON
             ${{ matrix.config.cmake_args }}
           RESULT_VARIABLE result
+          COMMAND_ECHO STDOUT
+          OUTPUT_VARIABLE COMMAND_OUT
+          ECHO_OUTPUT_VARIABLE
+          ERROR_VARIABLE COMMAND_ERR
+          ECHO_ERROR_VARIABLE
         )
         if (NOT result EQUAL 0)
+          message(INFO ${COMMAND_OUT})
+          message(WARNING ${COMMAND_ERR})
           message(FATAL_ERROR "Bad exit status")
         endif()
 
