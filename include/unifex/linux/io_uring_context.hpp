@@ -1355,7 +1355,7 @@ private:
   safe_file_descriptor fd_;
 
   static constexpr std::uint16_t host_to_network(std::uint16_t value) {
-#   if __has_include(<bit>)
+#   if __cpp_lib_byteswap >= 202110L
       return (
         std::endian::native == std::endian::little
           ? std::byteswap(value)
