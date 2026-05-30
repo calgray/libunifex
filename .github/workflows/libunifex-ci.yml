@@ -153,8 +153,16 @@ jobs:
             cmake_args: "-D CMAKE_CXX_STANDARD:STRING=20 -D CMAKE_CXX_FLAGS=-fno-exceptions"
           }
         - {
+            name: "Linux GCC 15 Debug (C++23)", artifact: "Linux.tar.xz",
+            os: ubuntu-latest,
+            io_sys: io_uring,
+            build_type: Debug,
+            cc: "gcc-15", cxx: "g++-15",
+            cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23"
+          }
+        - {
             name: "Linux GCC 15 Optimised (C++23)", artifact: "Linux.tar.xz",
-            os: ubuntu-25.04,
+            os: ubuntu-latest,
             io_sys: io_uring,
             build_type: RelWithDebInfo,
             cc: "gcc-15", cxx: "g++-15",
@@ -162,7 +170,7 @@ jobs:
           }
         - {
             name: "Linux GCC 15 Optimised noexcept (C++23)", artifact: "Linux.tar.xz",
-            os: ubuntu-25.04,
+            os: ubuntu-latest,
             io_sys: io_uring,
             build_type: RelWithDebInfo,
             cc: "gcc-15", cxx: "g++-15",
@@ -311,6 +319,30 @@ jobs:
             build_type: RelWithDebInfo,
             cc: "clang-20", cxx: "clang++-20",
             cmake_args: "-D CMAKE_CXX_STANDARD:STRING=20 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\" -D CMAKE_CXX_FLAGS=-fno-exceptions"
+          }
+        - {
+            name: "Linux Clang 22 Debug (C++23)", artifact: "Linux.tar.xz",
+            os: ubuntu-latest,
+            io_sys: io_uring,
+            build_type: Debug,
+            cc: "clang-22", cxx: "clang++-22",
+            cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\""
+          }
+        - {
+            name: "Linux Clang 22 Optimised (C++23)", artifact: "Linux.tar.xz",
+            os: ubuntu-latest,
+            io_sys: io_uring,
+            build_type: RelWithDebInfo,
+            cc: "clang-22", cxx: "clang++-22",
+            cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\""
+          }
+        - {
+            name: "Linux Clang 22 Optimised noexcept (C++23)", artifact: "Linux.tar.xz",
+            os: ubuntu-latest,
+            io_sys: io_uring,
+            build_type: RelWithDebInfo,
+            cc: "clang-22", cxx: "clang++-22",
+            cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\" -D CMAKE_CXX_FLAGS=-fno-exceptions"
           }
         - {
             name: "macOS GCC Debug (C++17)", artifact: "macOS.tar.xz",
@@ -515,6 +547,16 @@ jobs:
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
         sudo ./llvm.sh 20
+
+    - name: Install Clang 22
+      id: install_clang_22
+      if: startsWith(matrix.config.os, 'ubuntu') && ( matrix.config.cxx == 'clang++-22' )
+      shell: bash
+      working-directory: ${{ env.HOME }}
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 22
 
     - name: Install GCC 11
       id: install_gcc_11
