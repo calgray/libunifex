@@ -10,10 +10,6 @@ jobs:
     env:
       CMAKE_VERSION: ${{ matrix.config.cmake_version || '3.16.2' }}
       NINJA_VERSION: ${{ matrix.config.ninja_version || '1.9.0' }}
-    container:
-      image: ${{ matrix.config.container_image || '' }}
-      env:
-        DEBIAN_FRONTEND: "noninteractive"
     strategy:
       fail-fast: false
       matrix:
@@ -325,33 +321,6 @@ jobs:
             cc: "clang-20", cxx: "clang++-20",
             cmake_args: "-D CMAKE_CXX_STANDARD:STRING=20 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\" -D CMAKE_CXX_FLAGS=-fno-exceptions"
           }
-        # - {
-        #     name: "Linux Clang 22 Debug (C++23)", artifact: "Linux.tar.xz",
-        #     os: ubuntu-latest,
-        #     io_sys: io_uring,
-        #     build_type: Debug,
-        #     cc: "clang-22", cxx: "clang++-22",
-        #     cmake_version: "3.20.0",
-        #     cmake_args: "-D CMAKE_CXX_STANDARD:STRING=20 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\""
-        #   }
-        # - {
-        #     name: "Linux Clang 22 Optimised (C++23)", artifact: "Linux.tar.xz",
-        #     os: ubuntu-latest,
-        #     io_sys: io_uring,
-        #     build_type: RelWithDebInfo,
-        #     cc: "clang-22", cxx: "clang++-22",
-        #     cmake_version: "3.20.0",
-        #     cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\""
-        #   }
-        # - {
-        #     name: "Linux Clang 22 Optimised noexcept (C++23)", artifact: "Linux.tar.xz",
-        #     os: ubuntu-latest,
-        #     io_sys: io_uring,
-        #     build_type: RelWithDebInfo,
-        #     cc: "clang-22", cxx: "clang++-22",
-        #     cmake_version: "3.20.0",
-        #     cmake_args: "-D CMAKE_CXX_STANDARD:STRING=23 -D \"CMAKE_CXX_FLAGS:STRING=-fsanitize=address -fno-omit-frame-pointer\" -D CMAKE_CXX_FLAGS=-fno-exceptions"
-        #   }
         - {
             name: "macOS GCC Debug (C++17)", artifact: "macOS.tar.xz",
             os: macos-latest,
@@ -453,18 +422,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-
-    - name: Install OCI Ubuntu Tools
-      if: startsWith(matrix.config.container_image, 'ubuntu')
-      run: |
-        apt update
-        apt install -y software-properties-common lsb-release sudo cmake wget curl g++ gcc
-
-    # - name: Install CMake and Ninja
-    #   uses: lukka/get-cmake@v3
-    #   with:
-    #     cmakeVersion: ${{ env.CMAKE_VERSION }}
-    #     ninjaVersion: ${{ env.NINJA_VERSION }}
 
     - name: Download Ninja and CMake
       id: cmake_and_ninja
@@ -572,16 +529,6 @@ jobs:
         chmod +x llvm.sh
         sudo ./llvm.sh 20
 
-    - name: Install Clang 22
-      id: install_clang_22
-      if: startsWith(matrix.config.os, 'ubuntu') && ( matrix.config.cxx == 'clang++-22' )
-      shell: bash
-      working-directory: ${{ env.HOME }}
-      run: |
-        wget https://apt.llvm.org/llvm.sh
-        chmod +x llvm.sh
-        sudo ./llvm.sh 22
-
     - name: Install GCC 11
       id: install_gcc_11
       if: startsWith(matrix.config.os, 'ubuntu') && ( matrix.config.cxx == 'g++-11' )
@@ -643,7 +590,7 @@ jobs:
         sudo make install
 
     - name: Configure
-      shell: cmake -P {0} --trace
+      shell: cmake -P {0}
       run: |
         set(ENV{CC} ${{ matrix.config.cc }})
         set(ENV{CXX} ${{ matrix.config.cxx }})
@@ -708,7 +655,7 @@ jobs:
           RESULT_VARIABLE result
         )
         if (NOT result EQUAL 0)
-          message(FATAL_ERROR "Bad exit status")
+          message(FATAL_ERROR "Bad exit status: ${result}")
         endif()
 
     - name: Run tests
@@ -756,5 +703,5 @@ jobs:
           RESULT_VARIABLE result
         )
         if (NOT result EQUAL 0)
-          message(FATAL_ERROR "Bad exit status")
+          message(FATAL_ERROR "Bad exit status: ${result}")
         endif()
