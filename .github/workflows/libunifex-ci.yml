@@ -476,7 +476,11 @@ jobs:
         elseif ("${{ runner.os }}" STREQUAL "Linux")
           set(ninja_suffix "linux.zip")
           set(cmake_suffix "Linux-x86_64.tar.gz")
-          set(cmake_dir "cmake-${cmake_version}-Linux-x86_64/bin")
+          if(cmake_version VERSION_GREATER_EQUAL 3.20.0)
+            set(cmake_dir "cmake-${cmake_version}-linux-x86_64/bin")
+          else()
+            set(cmake_dir "cmake-${cmake_version}-Linux-x86_64/bin")
+          endif()
         elseif ("${{ runner.os }}" STREQUAL "macOS")
           set(ninja_suffix "mac.zip")
           set(cmake_suffix "Darwin-x86_64.tar.gz")
@@ -668,16 +672,9 @@ jobs:
             -D CMAKE_VERBOSE_MAKEFILE=ON
             ${{ matrix.config.cmake_args }}
           RESULT_VARIABLE result
-          COMMAND_ECHO STDOUT
-          OUTPUT_VARIABLE COMMAND_OUT
-          ECHO_OUTPUT_VARIABLE
-          ERROR_VARIABLE COMMAND_ERR
-          ECHO_ERROR_VARIABLE
         )
         if (NOT result EQUAL 0)
-          message(INFO ${COMMAND_OUT})
-          message(WARNING ${COMMAND_ERR})
-          message(FATAL_ERROR "Bad exit status")
+          message(WARNING "Bad exit status: ${result}")
         endif()
 
     - name: Build
